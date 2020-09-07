@@ -1,0 +1,110 @@
+﻿@model SiteLocaly.ViewModels.RechercheViewModel
+
+@{
+    ViewBag.Title = "Accueil";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="jumbotron">
+    <h1>Présentation</h1>
+    <p class="lead">Localy est une application web permettant de trouver des articles locaux et de localiser des articles spécifiques.</p>
+
+</div>
+
+
+
+<div class="jumbotron">
+    <h1>Recherche</h1>
+    <div class="row">
+        <div class="col-md-4">
+            <input type="text" class="form-control" id="RechercheInput" aria-describedby="RechercheHelp" placeholder="Entrez un article ou une catégorie">
+        </div>
+        <div class="col-md-4">
+            <label for="rayonMax">Rayon maximum de la recherche</label>
+            <input type="range" class="custom-range" id="rayonMax" min="10" max="1000" step="10">
+        </div>
+    </div>
+    <button type="button" class="btn btn-success" onclick="recherche()">Rechercher</button>
+</div>
+
+<div class="row">
+
+</div>
+
+<div id="mymap" style="height:600px;">
+
+</div>
+<div id="infopositionlatitude" hidden></div>
+<div id="infopositionlongitude" hidden></div>
+
+
+
+<!-- Leaflet JS-->
+<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin=""></script>
+
+<script>
+
+    var mymap = L.map('mymap').setView([@ViewBag.DefaultN, @ViewBag.DefaultE], 10);
+
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(mymap);
+
+    function recherche() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(getUserPosition);
+        }
+        let recherche = $("#RechercheInput").val();
+        let rayon = $("#rayonMax").val();
+        let lat = document.getElementById("infopositionlatitude").innerHTML;
+        let lon = document.getElementById("infopositionlongitude").innerHTML;
+
+        let data = { recherche: recherche, rayonMax: rayon, lat: lat, lon: lon };
+
+        $.ajax({
+            url: "@Url.Action("Recherche", "Home")",
+            method: "GET",
+            data: data,
+            success: function (ajaxData) {
+                if (ajaxData) {
+                    //tout va bien
+                    let json = JSON.parse(ajaxData);
+
+                    $(".leaflet-marker-icon").remove();
+                    $(".leaflet-popup").remove();
+                    $(".leaflet-shadow-pane").remove();
+
+                    for (var k in json) {
+                        console.log(k, json[k]);
+                        var marker = L.marker([json[k].latitude, json[k].longitude]).addTo(mymap);
+                        marker.bindPopup('<b>' + '<a href="/Magasin/Details/' + json[k].id + '">' + json[k].libelle + '</a></b>');
+                    }
+
+                } else {
+                    alert("erreur");
+                }
+            }
+        });
+    }
+
+    function getUserPosition(position) {
+        var infopos = "";
+        infopos += position.coords.latitude;
+        document.getElementById("infopositionlatitude").innerHTML = infopos;
+
+        infopos = "";
+        infopos += position.coords.longitude;
+        document.getElementById("infopositionlongitude").innerHTML = infopos;
+
+        if (position.coords.latitude != null && position.coords.longitude != null) {
+            mymap.flyTo([position.coords.latitude, position.coords.longitude], 12);
+        }
+
+    }
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(getUserPosition);
+    }
+</script>
